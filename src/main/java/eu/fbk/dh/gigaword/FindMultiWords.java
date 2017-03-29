@@ -51,10 +51,13 @@ public class FindMultiWords {
 
             int size = dbMaps.size();
             String[] buffer = new String[size];
-
             String[] parts = line.split("\\s+");
+            Matcher matcher;
+            StringBuffer b;
+            byte[] bytes;
+            ConcurrentMap<byte[], Integer> map;
             for (String part : parts) {
-                Matcher matcher = pattern.matcher(part);
+                matcher = pattern.matcher(part);
                 if (!matcher.find()) {
                     continue;
                 }
@@ -66,12 +69,12 @@ public class FindMultiWords {
                 }
                 buffer[buffer.length - 1] = part;
 
-                StringBuffer b = new StringBuffer();
+                b = new StringBuffer();
                 for (int i = buffer.length - 1; i >= 0; i--) {
                     int n = buffer.length - i;
                     b.insert(0, buffer[i]);
-                    byte[] bytes = b.toString().getBytes();
-                    ConcurrentMap<byte[], Integer> map = dbMaps.get(n);
+                    bytes = b.toString().getBytes();
+                    map = dbMaps.get(n);
                     map.putIfAbsent(bytes, 0);
                     map.put(bytes, map.get(bytes) + 1);
                     b.insert(0, " ");
@@ -119,7 +122,6 @@ public class FindMultiWords {
             }
 
             DB db = DBMaker.fileDB(outputFile.getAbsolutePath())
-                    .fileMmapEnable()
                     .closeOnJvmShutdown()
                     .make();
             Map<Integer, ConcurrentMap<byte[], Integer>> dbMaps = new HashMap<>();
@@ -136,16 +138,16 @@ public class FindMultiWords {
 
             ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 
-//            int counter = 0;
+            int counter = 0;
             String line;
             while ((line = reader.readLine()) != null) {
                 line = line.toLowerCase();
                 CountStuff countStuff = new CountStuff(line, dbMaps, wordTot);
                 executor.execute(countStuff);
-//                counter++;
-//                if (counter % STEP == 0) {
-//                    System.out.println(counter);
-//                }
+                counter++;
+                if (counter % 150000 == 0) {
+                   System.gc();
+                }
             }
 
             executor.shutdown();
