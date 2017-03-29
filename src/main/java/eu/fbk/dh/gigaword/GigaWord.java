@@ -5,13 +5,11 @@ import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.util.CoreMap;
+import eu.fbk.utils.core.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
 import java.util.Properties;
 
 /**
@@ -23,8 +21,17 @@ public class GigaWord {
     private static final Logger LOGGER = LoggerFactory.getLogger(GigaWord.class);
 
     public static void main(String[] args) {
-        String inputFileName = args[0];
-        String outputFileName = args[1];
+//        String inputFileName = args[0];
+//        String outputFileName = args[1];
+
+        final CommandLine cmd = CommandLine.parser().withName("command-line-test")
+                .withOption("i", "input", "Input file", "FILE", CommandLine.Type.FILE_EXISTING, true, false, true)
+                .withOption("o", "output", "Output file", "FILE", CommandLine.Type.FILE, true, false, true)
+                .withLogger(LoggerFactory.getLogger("eu.fbk")).parse(args);
+
+        File inputFile = cmd.getOptionValue("input", File.class);
+        File outputFile = cmd.getOptionValue("output", File.class);
+
         Integer blockSize = 100;
         if (args.length > 2) {
             blockSize = Integer.parseInt(args[2]);
@@ -38,9 +45,9 @@ public class GigaWord {
 
         try {
             System.out.println("Starting reading");
-            BufferedReader reader = new BufferedReader(new FileReader(inputFileName));
+            BufferedReader reader = new BufferedReader(new FileReader(inputFile));
             System.out.println("Starting writing");
-            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFileName));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
 
             String line;
             int i = 0;
