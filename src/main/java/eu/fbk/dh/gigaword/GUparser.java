@@ -2,7 +2,7 @@ package eu.fbk.dh.gigaword;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
-import eu.fbk.dh.tint.digimorph.DigiMorph;
+//import eu.fbk.dh.tint.digimorph.DigiMorph;
 import eu.fbk.utils.core.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -199,16 +199,16 @@ public class GUparser {
 
             // Loading Italian words with acute accent on "e"
             Set<String> eAcute = new HashSet<>();
-            DigiMorph digiMorph = new DigiMorph();
-            for (Object key : digiMorph.getMap().keySet()) {
-                String ks = (String) key;
-                if (ks.length() <= 1) {
-                    continue;
-                }
-                if (ks.endsWith("é")) {
-                    eAcute.add(ks.substring(0, ks.length() - 1));
-                }
-            }
+//            DigiMorph digiMorph = new DigiMorph();
+//            for (Object key : digiMorph.getMap().keySet()) {
+//                String ks = (String) key;
+//                if (ks.length() <= 1) {
+//                    continue;
+//                }
+//                if (ks.endsWith("é")) {
+//                    eAcute.add(ks.substring(0, ks.length() - 1));
+//                }
+//            }
 
             int fileNo = 0;
 
