@@ -4,6 +4,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
+import eu.fbk.utils.core.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,7 @@ import java.util.regex.Pattern;
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private static final String DEFAULT_REGEXP = "^(NN|JJ|VB)";
 
     public static void parseSnippet(Writer writer, Snippet snippet, String idSnippet, Pattern posPattern, String annotation, String target,
             String id)
@@ -42,20 +44,33 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        String jsonFile = "/Users/alessio/Desktop/Step1_pipeline/Json_task_1.json";
-        String annotationFile = "/Users/alessio/Desktop/Step1_pipeline/t1_annotations_all.txt";
-        String outputFile = "/Users/alessio/Desktop/Step1_pipeline/output.txt";
-
-        Pattern posPattern = Pattern.compile("^(NN|JJ|VB)");
+//        String jsonFile = "/Users/alessio/Desktop/Step1_pipeline/Json_task_1.json";
+//        String annotationFile = "/Users/alessio/Desktop/Step1_pipeline/t1_annotations_all.txt";
+//        String outputFile = "/Users/alessio/Desktop/Step1_pipeline/output.txt";
 
         Gson gson = new Gson();
         Map<String, String> annotations = new HashMap<>();
 
         try {
+            final CommandLine cmd = CommandLine.parser().withName("command-line-test")
+                    .withOption("j", "input", "Input file", "FILE", CommandLine.Type.FILE_EXISTING, true, false, true)
+                    .withOption("o", "output", "Output file", "FILE", CommandLine.Type.FILE, true, false, true)
+                    .withOption("a", "annotation", "Annotation file", "FILE", CommandLine.Type.FILE, true, false, true)
+                    .withOption("r", "regexp", String.format("Regular expression, default %s", DEFAULT_REGEXP), "REGEXP", CommandLine.Type.STRING,
+                            true, false, false)
+                    .withLogger(LoggerFactory.getLogger("eu.fbk")).parse(args);
+
+            File jsonFile = cmd.getOptionValue("j", File.class);
+            File annotationFile = cmd.getOptionValue("a", File.class);
+            File outputFile = cmd.getOptionValue("o", File.class);
+
+            String regExp = cmd.getOptionValue("r", String.class, DEFAULT_REGEXP);
+            Pattern posPattern = Pattern.compile(regExp);
+
             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
 
             JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(jsonFile), "UTF-8"));
-            List<String> lines = Files.readLines(new File(annotationFile), Charsets.UTF_8);
+            List<String> lines = Files.readLines(annotationFile, Charsets.UTF_8);
             for (String line : lines) {
                 String[] parts = line.split("\t");
                 if (parts.length < 2) {
@@ -85,7 +100,7 @@ public class Main {
             reader.close();
             writer.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            CommandLine.fail(e);
         }
     }
 }
