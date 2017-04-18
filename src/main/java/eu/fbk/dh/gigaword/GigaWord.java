@@ -24,60 +24,50 @@ public class GigaWord {
 //        String inputFileName = args[0];
 //        String outputFileName = args[1];
 
-        final CommandLine cmd = CommandLine.parser().withName("command-line-test")
-                .withOption("i", "input", "Input file", "FILE", CommandLine.Type.FILE_EXISTING, true, false, true)
-                .withOption("o", "output", "Output file", "FILE", CommandLine.Type.FILE, true, false, true)
-                .withLogger(LoggerFactory.getLogger("eu.fbk")).parse(args);
-
-        File inputFile = cmd.getOptionValue("input", File.class);
-        File outputFile = cmd.getOptionValue("output", File.class);
-
-        Integer blockSize = 100;
-        if (args.length > 2) {
-            blockSize = Integer.parseInt(args[2]);
-        }
-
-        Properties properties = new Properties();
-        properties.setProperty("annotators", "tokenize, ssplit");
-        System.out.println("Starting CoreNLP");
-        StanfordCoreNLP pipeline = new StanfordCoreNLP(properties);
-        System.out.println("Stanford initialized");
-
         try {
+            final CommandLine cmd = CommandLine.parser().withName("command-line-test")
+                    .withOption("i", "input", "Input file", "FILE", CommandLine.Type.FILE_EXISTING, true, false, true)
+                    .withOption("o", "output", "Output file", "FILE", CommandLine.Type.FILE, true, false, true)
+                    .withOption("p", "properties", "Properties file", "FILE", CommandLine.Type.FILE_EXISTING, true, false, false)
+                    .withLogger(LoggerFactory.getLogger("eu.fbk")).parse(args);
+
+            File inputFile = cmd.getOptionValue("input", File.class);
+            File outputFile = cmd.getOptionValue("output", File.class);
+            File propertiesFile = cmd.getOptionValue("properties", File.class);
+
+            Properties properties = new Properties();
+            properties.setProperty("annotators", "tokenize, ssplit");
+            properties.setProperty("ssplit.newlineIsSentenceBreak", "always");
+
+            if (propertiesFile != null) {
+                properties.load(new FileReader(propertiesFile));
+            }
+
+            System.out.println("Starting CoreNLP");
+            StanfordCoreNLP pipeline = new StanfordCoreNLP(properties);
+            System.out.println("Stanford initialized");
+
             System.out.println("Starting reading");
             BufferedReader reader = new BufferedReader(new FileReader(inputFile));
             System.out.println("Starting writing");
             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
 
             String line;
-            int i = 0;
             int j = 0;
-            StringBuffer buffer = new StringBuffer();
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
-                buffer.append(line).append("\n");
-                if (++i >= blockSize) {
-                    j++;
-                    System.out.print(".");
-                    if (j % 100 == 0) {
-                        System.out.println(" " + (j * blockSize));
+
+                Annotation annotation = new Annotation(line);
+                pipeline.annotate(annotation);
+
+                StringBuffer sentenceBuffer = new StringBuffer();
+                for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
+                    for (CoreLabel token : sentence.get(CoreAnnotations.TokensAnnotation.class)) {
+                        sentenceBuffer.append(token.originalText()).append(" ");
                     }
-
-                    Annotation annotation = new Annotation(buffer.toString());
-                    pipeline.annotate(annotation);
-
-                    StringBuffer sentenceBuffer = new StringBuffer();
-                    for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
-                        for (CoreLabel token : sentence.get(CoreAnnotations.TokensAnnotation.class)) {
-                            sentenceBuffer.append(token.originalText()).append(" ");
-                        }
-                        writer.append(sentenceBuffer.toString().trim()).append("\n");
-                        sentenceBuffer = new StringBuffer();
-                        writer.flush();
-                    }
-
-                    buffer = new StringBuffer();
-                    i = 0;
+                    writer.append(sentenceBuffer.toString().trim()).append("\n");
+                    sentenceBuffer = new StringBuffer();
+                    writer.flush();
                 }
             }
 
@@ -86,7 +76,7 @@ public class GigaWord {
             reader.close();
             writer.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            CommandLine.fail(e);
         }
     }
 }

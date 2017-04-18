@@ -98,8 +98,9 @@ public class FindMultiWords {
                     .withOption("i", "input", "Input file", "FILE", CommandLine.Type.FILE_EXISTING, true, false, true)
                     .withOption("o", "output", "DB output file", "FILE", CommandLine.Type.FILE, true, false, true)
                     .withOption("f", "force", "Force file overwrite")
-                    .withOption(null, "threads", "Number of threads", "NUM", CommandLine.Type.INTEGER, true, false, false)
-                    .withOption(null, "ngram-max-size", String.format("Maximum number of tokens (default %d)", MAX_NGRAM), "NUM",
+                    .withOption("m", "enable-mmap", "Enable MapDB mmap")
+                    .withOption("t", "threads", "Number of threads", "NUM", CommandLine.Type.INTEGER, true, false, false)
+                    .withOption("n", "ngram-max-size", String.format("Maximum number of tokens (default %d)", MAX_NGRAM), "NUM",
                             CommandLine.Type.INTEGER, true, false, false)
 
                     .withLogger(LoggerFactory.getLogger("eu.fbk")).parse(args);
@@ -107,6 +108,7 @@ public class FindMultiWords {
             File inputFile = cmd.getOptionValue("input", File.class);
             File outputFile = cmd.getOptionValue("output", File.class);
             Boolean forceOverwrite = cmd.hasOption("force");
+            Boolean enableMmap = cmd.hasOption("enable-mmap");
             Integer nThreads = cmd.getOptionValue("threads", Integer.class, NUM_THREAD);
             Integer maxNgramSize = cmd.getOptionValue("ngram-max-size", Integer.class, MAX_NGRAM);
 
@@ -121,9 +123,12 @@ public class FindMultiWords {
                 }
             }
 
-            DB db = DBMaker.fileDB(outputFile.getAbsolutePath())
-                    .closeOnJvmShutdown()
-                    .make();
+            DBMaker.Maker dbMaker = DBMaker.fileDB(outputFile.getAbsolutePath());
+            if (enableMmap) {
+                dbMaker.fileMmapEnable().fileMmapPreclearDisable();
+            }
+            DB db = dbMaker.closeOnJvmShutdown().make();
+
             Map<Integer, ConcurrentMap<byte[], Integer>> dbMaps = new HashMap<>();
             for (int i = 0; i < maxNgramSize; i++) {
                 dbMaps.put(i + 1,
@@ -138,16 +143,16 @@ public class FindMultiWords {
 
             ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 
-            int counter = 0;
+//            int counter = 0;
             String line;
             while ((line = reader.readLine()) != null) {
                 line = line.toLowerCase();
                 CountStuff countStuff = new CountStuff(line, dbMaps, wordTot);
                 executor.execute(countStuff);
-                counter++;
-                if (counter % 150000 == 0) {
-                   System.gc();
-                }
+//                counter++;
+//                if (counter % 150000 == 0) {
+//                   System.gc();
+//                }
             }
 
             executor.shutdown();
@@ -155,7 +160,7 @@ public class FindMultiWords {
 
             Atomic.Long wordCount = db.atomicLong("wordCount").create();
             wordCount.addAndGet(wordTot.get());
-            reader.close();
+            reader.close();             
 
 //            for (byte[] bytes : dbMaps.get(3).keySet()) {
 //                System.out.println(new String(bytes));
